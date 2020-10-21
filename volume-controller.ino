@@ -2,48 +2,63 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <vector>
+#include <bitset>
+#include <WS2812Serial.h>
 
-#define ENC_MASTER_A 0
-#define ENC_MASTER_B 1
-#define ENC_MASTER_SW 2
-#define ENC_MASTER_RED 16
-#define ENC_MASTER_GREEN 17
-#define ENC_MASTER_BLUE 18
+extern "C" {
+	__attribute__((weak)) int __exidx_start() { return -1; }
+	__attribute__((weak)) int __exidx_end() { return -1; }
+}
 
-#define ENC_CURRENT_A 3
-#define ENC_CURRENT_B 4
-#define ENC_CURRENT_SW 5
-#define ENC_CURRENT_RED 19
-#define ENC_CURRENT_GREEN 20
-#define ENC_CURRENT_BLUE 21
+constexpr int latchPin = 15;
+constexpr int clockPin = 16;
+constexpr int dataPin = 14;
 
-#define ENC_DISCORD_A 6
-#define ENC_DISCORD_B 7
-#define ENC_DISCORD_SW 8
+constexpr int enc_Master_A = 0;
+constexpr int enc_Master_B = 1;
+constexpr int enc_Master_SW = 2;
+constexpr int enc_Master_Red = 0;
+constexpr int enc_Master_Green = 1;
+constexpr int enc_Master_Blue = 2;
+
+
+constexpr int enc_Current_A = 3;
+constexpr int enc_Current_B = 4;
+constexpr int enc_Current_SW = 5;
+constexpr int enc_Current_Red = 3;
+constexpr int enc_Current_Green = 4;
+constexpr int enc_Current_Blue = 5;
+
+/*
+constexpr int enc_Discord_A = 6;
+constexpr int enc_Discord_B = 7;
+constexpr int enc_Discord_SW = 8;
 #define ENC_DISCORD_RED 22
 #define ENC_DISCORD_GREEN 23
 #define ENC_DISCORD_BLUE 24
 
-#define ENC_GAME_A 9
-#define ENC_GAME_B 10
-#define ENC_GAME_SW 11
+constexpr int enc_Game_A = 9;
+constexpr int enc_Game_B = 10;
+constexpr int enc_Game_SW = 11;
 #define ENC_GAME_RED 22
 #define ENC_GAME_GREEN 23
 #define ENC_GAME_BLUE 24
 
-#define ENC_MUSIC_A 14
-#define ENC_MUSIC_B 15
-#define ENC_MUSIC_SW 16
+constexpr int enc_Music_A = 12;
+constexpr int enc_Music_B = 13;
+constexpr int enc_Music_SW = 14;
 #define ENC_MUSIC_RED 22
 #define ENC_MUSIC_GREEN 23
 #define ENC_MUSIC_BLUE 24
 
-#define ENC_FIREFOX_A 17
-#define ENC_FIREFOX_B 18
-#define ENC_FIREFOX_SW 19
+constexpr int enc_Firefox_A = 15;
+constexpr int enc_Firefox_B = 16;
+constexpr int enc_Firefox_SW = 17;
 #define ENC_FIREFOX_RED 22
 #define ENC_FIREFOX_GREEN 23
 #define ENC_FIREFOX_BLUE 24
+*/
+
 
 bool masterMute = false;
 bool currentMute = false;
@@ -56,20 +71,21 @@ int masterVol, currentVol, discordVol, gameVol, musicVol, firefoxVol;
 
 std::vector<bool*> muteStatus = { &masterMute, &currentMute, &discordMute, &gameMute, &musicMute, &firefoxMute };
 
-// Number of encoders
-
-const int NUM_ENCODERS = 2;
+std::bitset<8> LEDStream;
 
 // Create encoders
 
-Encoder encMaster(ENC_MASTER_A,ENC_MASTER_B);
-Encoder encCurrent(ENC_CURRENT_A,ENC_CURRENT_B);
-//Encoder encDiscord(ENC_DISCORD_A,ENC_DISCORD_B);
-//Encoder encGame(ENC_GAME_A,ENC_GAME_B);
-//Encoder encMusic(ENC_MUSIC_A,ENC_MUSIC_B);
-//Encoder encFirefox(ENC_FIREFOX_A,ENC_FIREFOX_B);
+Encoder encMaster(enc_Master_A,enc_Master_B);
+Encoder encCurrent(enc_Current_A,enc_Current_B);
+/*
+Encoder encDiscord(enc_Discord_A,enc_Discord_B);
+Encoder encGame(enc_Game_A,enc_Game_B);
+Encoder encMusic(enc_Music_A,enc_Music_B);
+Encoder encFirefox(enc_Firefox_A,enc_Firefox_B);
+*/
 
 std::vector<Encoder*> encoders = { &encMaster, &encCurrent };
+
 
 class LED
 {
@@ -84,12 +100,12 @@ public:
 	enum Colours : unsigned char
 	{
 		LEDOFF = B111,
-		RED = B110,
+		RED = B011,
 		GREEN = B101,
-		YELLOW = B100,
-		BLUE = B011,
+		YELLOW = B001,
+		BLUE = B110,
 		PURPLE = B010,
-		CYAN = B001,
+		CYAN = B100,
 		WHITE = B000
 	};
 
@@ -98,22 +114,22 @@ public:
 		redPin = RedPin;
 		bluePin = BluePin;
 		greenPin = GreenPin;
-		pinMode(redPin, OUTPUT);
-		pinMode(greenPin, OUTPUT);
-		pinMode(bluePin, OUTPUT);
 		this->Colour = colour;
 		this->setColour(Colour);
-		
 	}
 
 	void setColour(unsigned char newColour)
 	{
-		digitalWrite(redPin, newColour & B001);
-		digitalWrite(greenPin, newColour & B010);
-		digitalWrite(bluePin, newColour & B100);
-
 		Colour = newColour;
+		bool redOut = (Colour >> 2) & 0x1;
+		bool greenOut = (Colour >> 1) & 0x1;
+		bool blueOut = Colour & 0x1;
+		LEDStream.set(redPin, redOut);
+		LEDStream.set(greenPin, greenOut);
+		LEDStream.set(bluePin, blueOut);
+		updateShiftRegister();
 	}
+
 	void muteToggle()
 	{
 		if (Colour == RED)
@@ -134,32 +150,39 @@ public:
 
 };
 
-LED masterLED(ENC_MASTER_RED, ENC_MASTER_GREEN, ENC_MASTER_BLUE, LED::WHITE);
-LED currentLED(ENC_CURRENT_RED, ENC_CURRENT_GREEN, ENC_CURRENT_BLUE, LED::CYAN);
+LED masterLED(enc_Master_Red, enc_Master_Green, enc_Master_Blue, LED::WHITE);
+LED currentLED(enc_Current_Red, enc_Current_Green, enc_Current_Blue, LED::CYAN);
 //LED discordLED(ENC_DISCORD_RED, ENC_DISCORD_GREEN, ENC_DISCORD_BLUE, LED::PURPLE);
 //LED gameLED(ENC_GAME_RED, ENC_GAME_GREEN, ENC_GAME_BLUE, LED::BLUE);
 //LED musicLED(ENC_MUSIC_RED, ENC_MUSIC_GREEN, ENC_MUSIC_BLUE, LED::GREEN);
 //LED firefoxLED(ENC_FIREFOX_RED, ENC_FIREFOX_GREEN, ENC_FIREFOX_BLUE, LED::YELLOW);
 
 
+
+
 void setup()
 {
-	pinMode(ENC_MASTER_SW, INPUT);
-	pinMode(ENC_CURRENT_SW, INPUT);
+	pinMode(latchPin, OUTPUT);
+	digitalWrite(latchPin, HIGH);
+	pinMode(clockPin, OUTPUT);
+	pinMode(dataPin, OUTPUT);
+
+
+	pinMode(enc_Master_SW, INPUT);
+	pinMode(enc_Current_SW, INPUT);
 	//pinMode(ENC_DISCORD_SW, INPUT);
 	//pinMode(ENC_GAME_SW, INPUT);
 	//pinMode(ENC_MUSIC_SW, INPUT);
 	//pinMode(ENC_FIREFOX_SW, INPUT);
 
-	attachInterrupt(digitalPinToInterrupt(ENC_MASTER_SW), muteMaster, RISING);
-	attachInterrupt(digitalPinToInterrupt(ENC_CURRENT_SW), muteCurrent, RISING);
+	attachInterrupt(digitalPinToInterrupt(enc_Master_SW), muteMaster, RISING);
+	attachInterrupt(digitalPinToInterrupt(enc_Current_SW), muteCurrent, RISING);
 	//attachInterrupt(digitalPinToInterrupt(ENC_DISCORD_SW), muteDiscord, RISING);
 	//attachInterrupt(digitalPinToInterrupt(ENC_GAME_SW), muteGame, RISING);
 	//attachInterrupt(digitalPinToInterrupt(ENC_MUSIC_SW), muteMusic, RISING);
 	//attachInterrupt(digitalPinToInterrupt(ENC_FIREFOX_SW), muteFirefox, RISING);
 
 	Serial.begin(9600);
-
 }
 
 
@@ -201,7 +224,17 @@ void loop()
 	delay(10);
 }
 
+
+
+void updateShiftRegister()
+{
+	digitalWrite(latchPin, LOW);
+	shiftOut(dataPin, clockPin, MSBFIRST, (uint8_t)(LEDStream.to_ulong()));
+	digitalWrite(latchPin, HIGH);
+}
+
 //button interrupt handlers
+
 void muteMaster()
 {
 	if (!masterMute)
@@ -215,6 +248,7 @@ void muteMaster()
 	masterMute = !masterMute;
 	masterLED.muteToggle();
 }
+
 void muteCurrent()
 {
 	if (!currentMute)
@@ -228,25 +262,56 @@ void muteCurrent()
 	currentMute = !currentMute;
 	currentLED.muteToggle();
 }
-
 /*
 void muteDiscord()
 {
+	if (!discordMute)
+	{
+		discordVol = encDiscord.read();
+	}
+	else
+	{
+		encdiscord.write(discordVol);
+	}
 	discordMute = !discordMute;
 	discordLED.muteToggle();
 }
 void muteGame()
 {
+	if (!gameMute)
+	{
+		gameVol = encGame.read();
+	}
+	else
+	{
+		encGame.write(gameVol);
+	}
 	gameMute = !gameMute;
 	gameLED.muteToggle();
 }
 void muteMusic()
 {
+	if (!musicMute)
+	{
+		musicVol = encMusic.read();
+	}
+	else
+	{
+		encMusic.write(musicVol);
+	}
 	musicMute = !musicMute;
 	musicLED.muteToggle();
 }
 void muteFirefox()
 {
+	if (!firefoxMute)
+	{
+		firefoxVol = encFirefox.read();
+	}
+	else
+	{
+		encFirefox.write(firefoxVol);
+	}
 	firefoxMute = !firefoxMute;
 	firefoxLED.muteToggle();
 }

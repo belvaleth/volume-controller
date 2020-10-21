@@ -1,0 +1,38 @@
+{
+  "configurations": [
+    {
+      "name": "Visual Micro",
+      "intelliSenseMode": "windows-msvc-x86",
+      "includePath": [
+        "${projectRoot}..\\volume-controller",
+        "${projectRoot}..\\..\\..\\..\\..\\..\\Program Files (x86)\\Arduino\\hardware\\teensy\\avr\\libraries\\Encoder",
+        "${projectRoot}..\\..\\..\\..\\..\\..\\Program Files (x86)\\Arduino\\hardware\\teensy\\avr\\libraries\\Encoder\\utility",
+        "${projectRoot}..\\..\\..\\..\\..\\..\\Program Files (x86)\\Arduino\\hardware\\teensy\\avr\\cores\\teensy4",
+        "${projectRoot}..\\..\\..\\..\\..\\..\\Program Files (x86)\\Arduino\\hardware\\teensy\\avr\\cores\\teensy4\\avr",
+        "${projectRoot}..\\..\\..\\..\\..\\..\\Program Files (x86)\\Arduino\\hardware\\teensy\\avr\\cores\\teensy4\\debug",
+        "${projectRoot}..\\..\\..\\..\\..\\..\\Program Files (x86)\\Arduino\\hardware\\teensy\\avr\\cores\\teensy4\\util",
+        "${projectRoot}..\\..\\..\\..\\..\\..\\Program Files (x86)\\Arduino\\hardware\\tools\\arm\\arm-none-eabi\\include",
+        "${projectRoot}..\\..\\..\\..\\..\\..\\Program Files (x86)\\Arduino\\hardware\\tools\\arm\\lib\\gcc\\arm-none-eabi\\5.4.1\\include",
+        "${projectRoot}..\\..\\..\\..\\..\\..\\Program Files (x86)\\Arduino\\hardware\\tools\\arm\\arm-none-eabi\\include\\c++\\5.4.1",
+        "${projectRoot}..\\..\\..\\..\\..\\..\\Program Files (x86)\\Arduino\\hardware\\tools\\arm\\arm-none-eabi\\include\\c++\\5.4.1\\tr1",
+        "${projectRoot}..\\..\\..\\..\\..\\..\\Program Files (x86)\\Arduino\\hardware\\tools\\arm\\arm-none-eabi\\include\\c++\\5.4.1\\bits",
+        "${projectRoot}..\\..\\..\\..\\..\\..\\Program Files (x86)\\Arduino\\hardware\\tools\\arm\\arm-none-eabi\\include\\c++\\5.4.1\\arm-none-eabi",
+        "${projectRoot}..\\..\\..\\..\\AppData\\Local\\Temp\\VMBuilds\\test\\teensy40\\Debug\\pch",
+        "${projectRoot}..\\..\\..\\..\\..\\..\\Program Files (x86)\\Arduino\\hardware\\teensy"
+      ],
+      "defines": [
+        "__HARDWARE_imxrt1062__",
+        "__HARDWARE_IMXRT1062__",
+        "_VMDEBUG=1",
+        "__IMXRT1062__",
+        "TEENSYDUINO=149",
+        "ARDUINO=108010",
+        "F_CPU=600000000",
+        "USB_SERIAL",
+        "LAYOUT_US_ENGLISH",
+        "__cplusplus=201103L",
+        "_VMICRO_INTELLISENSE"
+      ]
+    }
+  ]
+}
