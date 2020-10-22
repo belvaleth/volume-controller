@@ -10,9 +10,9 @@ extern "C" {
 	__attribute__((weak)) int __exidx_end() { return -1; }
 }
 
-constexpr int latchPin = 15;
-constexpr int clockPin = 16;
-constexpr int dataPin = 14;
+constexpr int latchPin = 19;
+constexpr int clockPin = 21;
+constexpr int dataPin = 18;
 
 constexpr int enc_Master_A = 0;
 constexpr int enc_Master_B = 1;
@@ -25,38 +25,38 @@ constexpr int enc_Master_Blue = 2;
 constexpr int enc_Current_A = 3;
 constexpr int enc_Current_B = 4;
 constexpr int enc_Current_SW = 5;
-constexpr int enc_Current_Red = 3;
-constexpr int enc_Current_Green = 4;
-constexpr int enc_Current_Blue = 5;
+constexpr int enc_Current_Red = 8;
+constexpr int enc_Current_Green = 9;
+constexpr int enc_Current_Blue = 10;
 
 /*
 constexpr int enc_Discord_A = 6;
 constexpr int enc_Discord_B = 7;
 constexpr int enc_Discord_SW = 8;
-#define ENC_DISCORD_RED 22
-#define ENC_DISCORD_GREEN 23
-#define ENC_DISCORD_BLUE 24
+constexpr int enc_Discord_Red = 6;
+constexpr int enc_Discord_Green = 7;
+constexpr int enc_Current_Blue = 8;
 
 constexpr int enc_Game_A = 9;
 constexpr int enc_Game_B = 10;
 constexpr int enc_Game_SW = 11;
-#define ENC_GAME_RED 22
-#define ENC_GAME_GREEN 23
-#define ENC_GAME_BLUE 24
+constexpr int enc_Game_Red = 9;
+constexpr int enc_Game_Green = 10;
+constexpr int enc_Game_Blue = 11;
 
 constexpr int enc_Music_A = 12;
 constexpr int enc_Music_B = 13;
 constexpr int enc_Music_SW = 14;
-#define ENC_MUSIC_RED 22
-#define ENC_MUSIC_GREEN 23
-#define ENC_MUSIC_BLUE 24
+constexpr int enc_Music_Red = 12;
+constexpr int enc_Music_Green = 13;
+constexpr int enc_Music_Blue = 14;
 
 constexpr int enc_Firefox_A = 15;
 constexpr int enc_Firefox_B = 16;
 constexpr int enc_Firefox_SW = 17;
-#define ENC_FIREFOX_RED 22
-#define ENC_FIREFOX_GREEN 23
-#define ENC_FIREFOX_BLUE 24
+constexpr int enc_Firefox_Red = 15;
+constexpr int enc_Firefox_Green = 16;
+constexpr int enc_Firefox_Blue = 17;
 */
 
 
@@ -71,7 +71,7 @@ int masterVol, currentVol, discordVol, gameVol, musicVol, firefoxVol;
 
 std::vector<bool*> muteStatus = { &masterMute, &currentMute, &discordMute, &gameMute, &musicMute, &firefoxMute };
 
-std::bitset<8> LEDStream;
+std::bitset<16> LEDStream;
 
 // Create encoders
 
@@ -85,6 +85,7 @@ Encoder encFirefox(enc_Firefox_A,enc_Firefox_B);
 */
 
 std::vector<Encoder*> encoders = { &encMaster, &encCurrent };
+
 
 
 class LED
@@ -157,13 +158,21 @@ LED currentLED(enc_Current_Red, enc_Current_Green, enc_Current_Blue, LED::CYAN);
 //LED musicLED(ENC_MUSIC_RED, ENC_MUSIC_GREEN, ENC_MUSIC_BLUE, LED::GREEN);
 //LED firefoxLED(ENC_FIREFOX_RED, ENC_FIREFOX_GREEN, ENC_FIREFOX_BLUE, LED::YELLOW);
 
+const int numled = 32;
+const int pin = 20;
+
+byte drawingMemory[numled * 3];
+DMAMEM byte displayMemory[numled * 12];
+
+WS2812Serial leds(numled, displayMemory, drawingMemory, pin, WS2812_GRB);
+
+constexpr int RING_COLOURS[16] = { 0x001600, 0x021600, 0x041600, 0x061500, 0x081500, 0x101400, 0x101200, 0x101000, 0x100800, 0x100600, 0x100400, 0x110400, 0x120300, 0x130200, 0x140100, 0x160000 };
 
 
 
 void setup()
 {
 	pinMode(latchPin, OUTPUT);
-	digitalWrite(latchPin, HIGH);
 	pinMode(clockPin, OUTPUT);
 	pinMode(dataPin, OUTPUT);
 
@@ -181,6 +190,8 @@ void setup()
 	//attachInterrupt(digitalPinToInterrupt(ENC_GAME_SW), muteGame, RISING);
 	//attachInterrupt(digitalPinToInterrupt(ENC_MUSIC_SW), muteMusic, RISING);
 	//attachInterrupt(digitalPinToInterrupt(ENC_FIREFOX_SW), muteFirefox, RISING);
+
+	leds.begin();
 
 	Serial.begin(9600);
 }
@@ -214,6 +225,7 @@ void loop()
 				reading = (reading * 10);
 			}
 		}
+		updateWS2812(reading, (i*16));
 		sendString += (String)reading;
 		if (i < (encoders.size() - 1))
 		{
@@ -224,12 +236,35 @@ void loop()
 	delay(10);
 }
 
+void updateWS2812(int volume, int offset)
+{
+	for (int i = 0; i < 16; i++)
+	{
+		leds.setPixel(i+offset, 0x000000);
+	}
+	int activeLEDs = volume / 60;
+	if (activeLEDs > 16)
+	{
+		activeLEDs = 16;
+	}
+	for (int i = 0; i < activeLEDs; i++)
+	{
+		leds.setPixel(i+offset, RING_COLOURS[i]);
+	}
+	leds.show();
+}
 
 
 void updateShiftRegister()
 {
 	digitalWrite(latchPin, LOW);
-	shiftOut(dataPin, clockPin, MSBFIRST, (uint8_t)(LEDStream.to_ulong()));
+	unsigned char byte1 = ((LEDStream.to_ulong()) & 0xFF000000UL) >> 24;
+	unsigned char byte2 = ((LEDStream.to_ulong()) & 0x00FF0000UL) >> 16;
+	unsigned char byte3 = ((LEDStream.to_ulong()) & 0x0000FF00UL) >> 8;
+	unsigned char byte4 = ((LEDStream.to_ulong()) & 0x000000FFUL);
+
+	shiftOut(dataPin, clockPin, MSBFIRST, byte3);
+	shiftOut(dataPin, clockPin, MSBFIRST, byte4);
 	digitalWrite(latchPin, HIGH);
 }
 
