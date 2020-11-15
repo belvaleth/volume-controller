@@ -10,8 +10,8 @@ extern "C" {
 	__attribute__((weak)) int __exidx_end() { return -1; }
 }
 
-constexpr int latchPin = 19;
-constexpr int clockPin = 21;
+constexpr int latchPin = 21;
+constexpr int clockPin = 19;
 constexpr int dataPin = 18;
 
 constexpr int enc_Master_A = 0;
@@ -168,6 +168,46 @@ WS2812Serial leds(numled, displayMemory, drawingMemory, pin, WS2812_GRB);
 
 constexpr int RING_COLOURS[16] = { 0x001600, 0x021600, 0x041600, 0x061500, 0x081500, 0x101400, 0x101200, 0x101000, 0x100800, 0x100600, 0x100400, 0x110400, 0x120300, 0x130200, 0x140100, 0x160000 };
 
+class Timer
+{
+
+private:
+	unsigned long StartTime;
+
+public:
+	unsigned long Duration = 0;
+
+	Timer(unsigned long duration)
+	{
+		StartTime = millis();
+		Duration = duration;
+	}
+
+	bool isExpired()
+	{
+		if (millis() - StartTime >= Duration)
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+
+	void restart()
+	{
+		StartTime = millis();
+	}
+
+};
+
+Timer masterTimer(50);
+Timer currentTimer(50);
+Timer discordTimer(50);
+Timer gameTimer(50);
+Timer musicTimer(50);
+Timer firefoxTimer(50);
 
 
 void setup()
@@ -272,30 +312,38 @@ void updateShiftRegister()
 
 void muteMaster()
 {
-	if (!masterMute)
+	if (masterTimer.isExpired() == true)
 	{
-		masterVol = encMaster.read();
+		if (!masterMute)
+		{
+			masterVol = encMaster.read();
+		}
+		else
+		{
+			encMaster.write(masterVol);
+		}
+		masterMute = !masterMute;
+		masterLED.muteToggle();
+		masterTimer.restart();
 	}
-	else
-	{
-		encMaster.write(masterVol);
-	}
-	masterMute = !masterMute;
-	masterLED.muteToggle();
 }
 
 void muteCurrent()
 {
-	if (!currentMute)
+	if (currentTimer.isExpired() == true)
 	{
-		currentVol = encCurrent.read();
+		if (!currentMute)
+		{
+			currentVol = encCurrent.read();
+		}
+		else
+		{
+			encCurrent.write(currentVol);
+		}
+		currentMute = !currentMute;
+		currentLED.muteToggle();
+		currentTimer.restart();
 	}
-	else
-	{
-		encCurrent.write(currentVol);
-	}
-	currentMute = !currentMute;
-	currentLED.muteToggle();
 }
 /*
 void muteDiscord()
