@@ -16,28 +16,30 @@ constexpr int latchPin = 21;
 constexpr int clockPin = 19;
 constexpr int dataPin = 18;
 
-constexpr int enc_Master_A = 1;
-constexpr int enc_Master_B = 0;
+constexpr int enc_Master_A = 0;
+constexpr int enc_Master_B = 1;
 constexpr int enc_Master_SW = 2;
 
-constexpr int enc_Current_A = 4;
-constexpr int enc_Current_B = 3;
+constexpr int enc_Current_A = 3;
+constexpr int enc_Current_B = 4;
 constexpr int enc_Current_SW = 5;
 
-constexpr int enc_Discord_A = 7;
-constexpr int enc_Discord_B = 6;
+constexpr int enc_Discord_A = 6;
+constexpr int enc_Discord_B = 7;
 constexpr int enc_Discord_SW = 8;
 
-constexpr int enc_Game_A = 10;
-constexpr int enc_Game_B = 9;
+constexpr int enc_Game_A = 9;
+constexpr int enc_Game_B = 10;
 constexpr int enc_Game_SW = 11;
+
+// A and B are reversed here on purpose due to needing to work around the LED on pin 13...
 
 constexpr int enc_Music_A = 13;
 constexpr int enc_Music_B = 12;
 constexpr int enc_Music_SW = 14;
 
-constexpr int enc_Firefox_A = 16;
-constexpr int enc_Firefox_B = 15;
+constexpr int enc_Firefox_A = 15;
+constexpr int enc_Firefox_B = 16;
 constexpr int enc_Firefox_SW = 17;
 
 // These are pins on the chained shift registers
