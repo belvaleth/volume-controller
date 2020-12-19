@@ -5,45 +5,42 @@
 #include <bitset>
 #include <WS2812Serial.h>
 
-// This is needed or compiler will complain about unhandled exceptions
-
 extern "C" {
 	__attribute__((weak)) int __exidx_start() { return -1; }
 	__attribute__((weak)) int __exidx_end() { return -1; }
 }
 
-// Pins for the shift registers
+// These are pins on the Teensy
 
 constexpr int latchPin = 21;
 constexpr int clockPin = 19;
 constexpr int dataPin = 18;
 
-// Pins on the Teensy
-constexpr int enc_Master_A = 0;
-constexpr int enc_Master_B = 1;
+constexpr int enc_Master_A = 1;
+constexpr int enc_Master_B = 0;
 constexpr int enc_Master_SW = 2;
 
-constexpr int enc_Current_A = 3;
-constexpr int enc_Current_B = 4;
+constexpr int enc_Current_A = 4;
+constexpr int enc_Current_B = 3;
 constexpr int enc_Current_SW = 5;
 
-constexpr int enc_Discord_A = 6;
-constexpr int enc_Discord_B = 7;
+constexpr int enc_Discord_A = 7;
+constexpr int enc_Discord_B = 6;
 constexpr int enc_Discord_SW = 8;
 
-constexpr int enc_Game_A = 9;
-constexpr int enc_Game_B = 10;
+constexpr int enc_Game_A = 10;
+constexpr int enc_Game_B = 9;
 constexpr int enc_Game_SW = 11;
 
-constexpr int enc_Music_A = 12;
-constexpr int enc_Music_B = 13;
+constexpr int enc_Music_A = 13;
+constexpr int enc_Music_B = 12;
 constexpr int enc_Music_SW = 14;
 
-constexpr int enc_Firefox_A = 15;
-constexpr int enc_Firefox_B = 16;
+constexpr int enc_Firefox_A = 16;
+constexpr int enc_Firefox_B = 15;
 constexpr int enc_Firefox_SW = 17;
 
-// Pins on the daisy chained shift registers. Pins 0-5 on each are used, 6-7 are NC
+// These are pins on the chained shift registers
 
 constexpr int enc_Master_Red = 0;
 constexpr int enc_Master_Green = 1;
@@ -81,7 +78,7 @@ int masterVol, currentVol, discordVol, gameVol, musicVol, firefoxVol;
 
 std::vector<bool*> muteStatus = { &masterMute, &currentMute, &discordMute, &gameMute, &musicMute, &firefoxMute };
 
-std::bitset<16> LEDStream;
+std::bitset<24> LEDStream;
 
 // Create encoders
 
@@ -93,8 +90,6 @@ Encoder encMusic(enc_Music_A,enc_Music_B);
 Encoder encFirefox(enc_Firefox_A,enc_Firefox_B);
 
 std::vector<Encoder*> encoders = { &encMaster, &encCurrent, &encDiscord, &encGame, &encMusic, &encFirefox };
-
-// Class to handle changing LED status
 
 class LED
 {
@@ -156,7 +151,6 @@ public:
 	{
 		this->setColour(LEDOFF);
 	}
-
 };
 
 LED masterLED(enc_Master_Red, enc_Master_Green, enc_Master_Blue, LED::WHITE);
@@ -166,23 +160,15 @@ LED gameLED(enc_Game_Red, enc_Game_Green, enc_Game_Blue, LED::BLUE);
 LED musicLED(enc_Music_Red, enc_Music_Green, enc_Music_Blue, LED::GREEN);
 LED firefoxLED(enc_Firefox_Red, enc_Firefox_Green, enc_Firefox_Blue, LED::YELLOW);
 
-// numled is # of LED rings * 16 LEDs per ring
-
 const int numled = 96;
-
-// uses pin 20 on the Teensy - this is one of the pins that support DMA
-const int pin = 20;
+const int LEDPin = 20;
 
 byte drawingMemory[numled * 3];
 DMAMEM byte displayMemory[numled * 12];
 
-WS2812Serial leds(numled, displayMemory, drawingMemory, pin, WS2812_GRB);
-
-// Colours that the ring will use as it fills. Gradient from green -> yellow -> red
+WS2812Serial leds(numled, displayMemory, drawingMemory, LEDPin, WS2812_GRB);
 
 constexpr int RING_COLOURS[16] = { 0x001600, 0x021600, 0x041600, 0x061500, 0x081500, 0x101400, 0x101200, 0x101000, 0x100800, 0x100600, 0x100400, 0x110400, 0x120300, 0x130200, 0x140100, 0x160000 };
-
-// Software debouncing class
 
 class Timer
 {
@@ -218,20 +204,18 @@ public:
 
 };
 
-Timer masterTimer(50);
-Timer currentTimer(50);
-Timer discordTimer(50);
-Timer gameTimer(50);
-Timer musicTimer(50);
-Timer firefoxTimer(50);
-
+Timer masterTimer(300);
+Timer currentTimer(300);
+Timer discordTimer(300);
+Timer gameTimer(300);
+Timer musicTimer(300);
+Timer firefoxTimer(300);
 
 void setup()
 {
 	pinMode(latchPin, OUTPUT);
 	pinMode(clockPin, OUTPUT);
 	pinMode(dataPin, OUTPUT);
-
 
 	pinMode(enc_Master_SW, INPUT);
 	pinMode(enc_Current_SW, INPUT);
@@ -250,6 +234,8 @@ void setup()
 	leds.begin();
 
 	Serial.begin(9600);
+
+	updateShiftRegister();
 }
 
 
@@ -292,8 +278,6 @@ void loop()
 	delay(10);
 }
 
-// The LED rings are daisy chained off a single data pin, so we need to update them all at once. Offset defined so we only change the bits we need to
-
 void updateWS2812(int volume, int offset)
 {
 	for (int i = 0; i < 16; i++)
@@ -312,22 +296,21 @@ void updateWS2812(int volume, int offset)
 	leds.show();
 }
 
-// Send updated LED bits through the shift registers
-
 void updateShiftRegister()
 {
 	digitalWrite(latchPin, LOW);
-	unsigned char byte1 = ((LEDStream.to_ulong()) & 0xFF000000UL) >> 24;
-	unsigned char byte2 = ((LEDStream.to_ulong()) & 0x00FF0000UL) >> 16;
-	unsigned char byte3 = ((LEDStream.to_ulong()) & 0x0000FF00UL) >> 8;
-	unsigned char byte4 = ((LEDStream.to_ulong()) & 0x000000FFUL);
+	
+	unsigned char byte1 = ((LEDStream.to_ulong()) & 0xFF0000UL) >> 16;
+	unsigned char byte2 = ((LEDStream.to_ulong()) & 0x00FF00UL) >> 8;
+	unsigned char byte3 = ((LEDStream.to_ulong()) & 0x0000FFUL);
 
+	shiftOut(dataPin, clockPin, MSBFIRST, byte1);
+	shiftOut(dataPin, clockPin, MSBFIRST, byte2);
 	shiftOut(dataPin, clockPin, MSBFIRST, byte3);
-	shiftOut(dataPin, clockPin, MSBFIRST, byte4);
 	digitalWrite(latchPin, HIGH);
 }
 
-// button interrupt handlers
+//button interrupt handlers
 
 void muteMaster()
 {
@@ -367,55 +350,72 @@ void muteCurrent()
 
 void muteDiscord()
 {
-	if (!discordMute)
+	if (discordTimer.isExpired() == true)
 	{
-		discordVol = encDiscord.read();
+		if (!discordMute)
+		{
+			discordVol = encDiscord.read();
+		}
+		else
+		{
+			encDiscord.write(discordVol);
+		}
+		discordMute = !discordMute;
+		discordLED.muteToggle();
+		discordTimer.restart();
 	}
-	else
-	{
-		encDiscord.write(discordVol);
-	}
-	discordMute = !discordMute;
-	discordLED.muteToggle();
 }
 
 void muteGame()
 {
-	if (!gameMute)
+	if (gameTimer.isExpired() == true)
 	{
-		gameVol = encGame.read();
+		if (!gameMute)
+		{
+			gameVol = encGame.read();
+		}
+		else
+		{
+			encGame.write(gameVol);
+		}
+		gameMute = !gameMute;
+		gameLED.muteToggle();
+		gameTimer.restart();
 	}
-	else
-	{
-		encGame.write(gameVol);
-	}
-	gameMute = !gameMute;
-	gameLED.muteToggle();
 }
 
 void muteMusic()
 {
-	if (!musicMute)
+	if (musicTimer.isExpired() == true)
 	{
-		musicVol = encMusic.read();
+		if (!musicMute)
+		{
+			musicVol = encMusic.read();
+		}
+		else
+		{
+			encMusic.write(musicVol);
+		}
+		musicMute = !musicMute;
+		musicLED.muteToggle();
+		musicTimer.restart();
 	}
-	else
-	{
-		encMusic.write(musicVol);
-	}
-	musicMute = !musicMute;
-	musicLED.muteToggle();
 }
+
 void muteFirefox()
 {
-	if (!firefoxMute)
+	if (firefoxTimer.isExpired() == true)
 	{
-		firefoxVol = encFirefox.read();
+		if (!firefoxMute)
+		{
+			firefoxVol = encFirefox.read();
+		}
+		else
+		{
+			encFirefox.write(firefoxVol);
+		}
+		firefoxMute = !firefoxMute;
+		firefoxLED.muteToggle();
+		firefoxTimer.restart();
 	}
-	else
-	{
-		encFirefox.write(firefoxVol);
-	}
-	firefoxMute = !firefoxMute;
-	firefoxLED.muteToggle();
 }
